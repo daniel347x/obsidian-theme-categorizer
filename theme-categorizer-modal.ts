@@ -310,6 +310,15 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 this.currentPreviewTheme = match.item;
                 this.setTheme(match.item);
                 this.previewing = true;
+                
+                // CRITICAL: Update chooser's selected item so arrow keys work from here
+                //@ts-ignore
+                const itemIndex = this.chooser.values.findIndex(v => v.item === match.item);
+                if (itemIndex >= 0) {
+                    //@ts-ignore
+                    this.chooser.setSelectedItem(itemIndex);
+                }
+                
                 this.refreshSuggestions();
             }
         });
