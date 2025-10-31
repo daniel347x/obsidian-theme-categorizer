@@ -44,9 +44,8 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 modal.setTheme(selectedTheme);
                 modal.previewing = true;
                 
-                // Update button states and borders without refreshing (to avoid chooser reset)
+                // Update button states without refreshing (to avoid chooser reset)
                 modal.updatePreviewButtonStates(oldPreviewTheme, selectedTheme);
-                modal.updateItemBorders(oldPreviewTheme, selectedTheme);
             }
         }
 
@@ -89,6 +88,8 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         
         filterContainer.createEl('span', { text: 'Filter: ' });
         filterContainer.style.marginTop = '20px'; // Add spacing above category buttons
+        filterContainer.style.marginBottom = '8px'; // Add spacing below category buttons
+        filterContainer.style.marginLeft = '12px'; // Add spacing on left
         filterContainer.style.paddingTop = '12px'; // Extra padding for visual separation
         
         // "All" button
@@ -166,17 +167,8 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         return item;
     }
 
-    // Override renderSuggestion to add category management (and optionally preview buttons)
+    // Override renderSuggestion to add category management and preview buttons
     renderSuggestion(match: FuzzyMatch<string>, el: HTMLElement) {
-        // Add border to currently previewed item
-        if (match.item === this.currentPreviewTheme) {
-            el.style.border = '2px solid var(--interactive-accent)';
-            el.style.borderRadius = '4px';
-            el.style.padding = '4px';
-        } else {
-            el.style.border = '2px solid transparent';
-            el.style.padding = '4px';
-        }
         
         // Skip buttons for "None" default theme
         if (match.item === this.DEFAULT_THEME_KEY) {
@@ -405,7 +397,6 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
             this.setTheme(match.item);
             this.previewing = true;
             this.updatePreviewButtonStates(oldPreviewTheme, match.item);
-            this.updateItemBorders(oldPreviewTheme, match.item);
             
             this.showContextMenu(event, match.item);
         });
@@ -464,20 +455,27 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                         }
                         await this.saveSettings();
                         
-                            // Get current scroll position before refresh
-                    //@ts-ignore
-                    const scrollContainer = this.modalEl.querySelector('.prompt-results');
-                    const scrollTop = scrollContainer?.scrollTop || 0;
-                    
-                    this.refreshSuggestions();
-                    
-                    // Restore scroll position
-                    if (scrollContainer) {
-                        scrollContainer.scrollTop = scrollTop;
-                    }
-                    
-                    // Don't close menu - let user continue selecting
-                    return false;
+                        // Get current scroll position and selected item before refresh
+                        //@ts-ignore
+                        const scrollContainer = this.modalEl.querySelector('.prompt-results');
+                        const scrollTop = scrollContainer?.scrollTop || 0;
+                        //@ts-ignore
+                        const selectedIndex = this.chooser.selectedItem;
+                        
+                        this.refreshSuggestions();
+                        
+                        // Restore scroll position and selection
+                        if (scrollContainer) {
+                            scrollContainer.scrollTop = scrollTop;
+                        }
+                        //@ts-ignore
+                        if (selectedIndex >= 0) {
+                            //@ts-ignore
+                            this.chooser.setSelectedItem(selectedIndex);
+                        }
+                        
+                        // Don't close menu - let user continue selecting
+                        return false;
                 });
                 });
             });
@@ -538,46 +536,6 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
     }
 
 
-
-    updateItemBorders(oldTheme: string | null, newTheme: string) {
-        console.log('updateItemBorders called:', { oldTheme, newTheme });
-        
-        // Find all suggestion elements
-        //@ts-ignore
-        const suggestions = this.chooser.suggestions;
-        
-        if (!suggestions) {
-            console.log('No suggestions found');
-            return;
-        }
-        
-        console.log('Total suggestions:', suggestions.length);
-        
-        suggestions.forEach((suggestionEl: any) => {
-            const item = suggestionEl.item;
-            const el = suggestionEl.el;
-            
-            // Skip undefined items (like "None" default theme)
-            if (!item || !el) {
-                return;
-            }
-            
-            if (item === newTheme) {
-                console.log('Adding border to:', item);
-                el.style.border = '2px solid var(--interactive-accent)';
-                el.style.borderRadius = '4px';
-                el.style.padding = '4px';
-            } else if (oldTheme && item === oldTheme) {
-                console.log('Removing border from:', item);
-                el.style.border = '2px solid transparent';
-                el.style.padding = '4px';
-            } else {
-                // Reset any other items to transparent border
-                el.style.border = '2px solid transparent';
-                el.style.padding = '4px';
-            }
-        });
-    }
 
     updatePreviewButtonStates(oldTheme: string | null, newTheme: string) {
         console.log('updatePreviewButtonStates called:', { oldTheme, newTheme });
