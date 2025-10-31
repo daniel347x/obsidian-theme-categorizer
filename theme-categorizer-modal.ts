@@ -267,6 +267,8 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         const previewBtn = buttonContainer.createEl('button', { 
             cls: 'theme-preview-btn'
         });
+        // Store theme name as data attribute for easy lookup
+        previewBtn.setAttribute('data-theme', match.item);
         previewBtn.style.cursor = 'pointer';
         previewBtn.style.padding = '4px 12px';
         previewBtn.style.fontSize = '13px';
@@ -480,17 +482,14 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
     updatePreviewButtonStates(oldTheme: string | null, newTheme: string) {
         console.log('updatePreviewButtonStates called:', { oldTheme, newTheme });
         
-        // Find all preview buttons and update only the affected ones
+        // Find all preview buttons by data-theme attribute
         const allButtons = this.modalEl.querySelectorAll('.theme-preview-btn');
-        //@ts-ignore
-        const suggestions = this.chooser.suggestions;
         
-        console.log('Found buttons:', allButtons.length, 'suggestions:', suggestions?.length);
+        console.log('Found buttons:', allButtons.length);
         
-        allButtons.forEach((btn, idx) => {
-            if (!suggestions[idx]) return;
-            //@ts-ignore
-            const themeName = suggestions[idx].item;
+        allButtons.forEach((btn) => {
+            const themeName = btn.getAttribute('data-theme');
+            if (!themeName) return;
             
             if (themeName === newTheme) {
                 console.log('Setting green button for:', themeName);
