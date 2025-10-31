@@ -320,6 +320,10 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 }
                 
                 this.refreshSuggestions();
+                
+                // Refocus the input to keep arrow key navigation working
+                //@ts-ignore
+                setTimeout(() => this.inputEl.focus(), 0);
             }
         });
         
