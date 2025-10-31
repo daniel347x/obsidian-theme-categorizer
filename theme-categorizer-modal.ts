@@ -1,4 +1,4 @@
-import { App, FuzzySuggestModal } from "obsidian";
+import { App, FuzzySuggestModal, FuzzyMatch, Menu, Notice } from "obsidian";
 
 interface ThemeCategorizerSettings {
     themeCategories: { [themeName: string]: string[] };
@@ -10,13 +10,15 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
     DEFAULT_THEME_TEXT = "None";
     settings: ThemeCategorizerSettings;
     selectedCategory: string | null = null;
+    saveSettings: () => Promise<void>;
 
     initialTheme: string;
     previewing = false;
 
-    constructor(app: App, settings: ThemeCategorizerSettings) {
+    constructor(app: App, settings: ThemeCategorizerSettings, saveSettings: () => Promise<void>) {
         super(app);
         this.settings = settings;
+        this.saveSettings = saveSettings;
         
         //@ts-ignore
         this.bgEl.setAttribute("style", "background-color: transparent");
@@ -132,6 +134,128 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         return item;
     }
 
+    // Override renderSuggestion to add right-click handler
+    renderSuggestion(match: FuzzyMatch<string>, el: HTMLElement) {
+        // Default rendering - show theme name with categories
+        el.createDiv({ text: this.getItemText(match.item) });
+        
+        // Add right-click context menu handler
+        el.addEventListener('contextmenu', (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.showContextMenu(event, match.item);
+        });
+    }
+
+    showContextMenu(event: MouseEvent, themeName: string) {
+        const menu = new Menu();
+        
+        // Skip context menu for "None" default theme
+        if (themeName === this.DEFAULT_THEME_KEY) {
+            return;
+        }
+
+        const currentCategories = this.settings.themeCategories[themeName] || [];
+        const allCategories = this.getAllCategories();
+
+        // Section: Toggle existing categories
+        if (allCategories.length > 0) {
+            menu.addItem((item) => {
+                item.setTitle("Categories:");
+                item.setDisabled(true);
+            });
+
+            allCategories.forEach(category => {
+                const isActive = currentCategories.includes(category);
+                menu.addItem((item) => {
+                    item
+                        .setTitle(`${isActive ? '✓ ' : ''}${category}`)
+                        .setIcon(isActive ? 'checkbox-glyph' : 'circle')
+                        .onClick(async () => {
+                            if (isActive) {
+                                // Remove category
+                                this.settings.themeCategories[themeName] = currentCategories.filter(c => c !== category);
+                            } else {
+                                // Add category
+                                if (!this.settings.themeCategories[themeName]) {
+                                    this.settings.themeCategories[themeName] = [];
+                                }
+                                this.settings.themeCategories[themeName].push(category);
+                            }
+                            await this.saveSettings();
+                            this.refreshSuggestions();
+                        });
+                });
+            });
+
+            menu.addSeparator();
+        }
+
+        // Add new category
+        menu.addItem((item) => {
+            item
+                .setTitle("Add new category...")
+                .setIcon('plus')
+                .onClick(async () => {
+                    // Close context menu and prompt for new category
+                    const newCategory = await this.promptForCategory();
+                    if (newCategory && newCategory.trim()) {
+                        if (!this.settings.themeCategories[themeName]) {
+                            this.settings.themeCategories[themeName] = [];
+                        }
+                        if (!this.settings.themeCategories[themeName].includes(newCategory.trim())) {
+                            this.settings.themeCategories[themeName].push(newCategory.trim());
+                            await this.saveSettings();
+                            this.refreshSuggestions();
+                            new Notice(`Added category "${newCategory.trim()}" to ${themeName}`);
+                        } else {
+                            new Notice(`Theme already has category "${newCategory.trim()}"`);
+                        }
+                    }
+                });
+        });
+
+        // Remove all categories
+        if (currentCategories.length > 0) {
+            menu.addSeparator();
+            menu.addItem((item) => {
+                item
+                    .setTitle("Remove all categories")
+                    .setIcon('trash')
+                    .onClick(async () => {
+                        this.settings.themeCategories[themeName] = [];
+                        await this.saveSettings();
+                        this.refreshSuggestions();
+                        new Notice(`Removed all categories from ${themeName}`);
+                    });
+            });
+        }
+
+        menu.showAtMouseEvent(event);
+    }
+
+    async promptForCategory(): Promise<string | null> {
+        return new Promise((resolve) => {
+            const promptModal = new CategoryPromptModal(this.app, (category) => {
+                resolve(category);
+            });
+            promptModal.open();
+        });
+    }
+
+    refreshSuggestions() {
+        // Refresh the category filter buttons
+        const oldFilter = this.modalEl.querySelector('.category-filter');
+        if (oldFilter) {
+            oldFilter.remove();
+        }
+        this.addCategoryFilter();
+
+        // Refresh the suggestion list
+        //@ts-ignore
+        this.updateSuggestions();
+    }
+
     onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): void {
         this.previewing = false;
         this.setTheme(item);
@@ -142,3 +266,61 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         this.app.customCss.setTheme(themeName);
     }
 }
+
+// Simple modal to prompt for category name
+class CategoryPromptModal extends Modal {
+    onSubmit: (category: string | null) => void;
+    inputEl: HTMLInputElement;
+
+    constructor(app: App, onSubmit: (category: string | null) => void) {
+        super(app);
+        this.onSubmit = onSubmit;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.createEl('h3', { text: 'Add new category' });
+        
+        this.inputEl = contentEl.createEl('input', { 
+            type: 'text',
+            placeholder: 'Category name'
+        });
+        this.inputEl.focus();
+
+        const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+        
+        const submitBtn = buttonContainer.createEl('button', { 
+            text: 'Add',
+            cls: 'mod-cta'
+        });
+        submitBtn.onclick = () => {
+            this.onSubmit(this.inputEl.value);
+            this.close();
+        };
+
+        const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
+        cancelBtn.onclick = () => {
+            this.onSubmit(null);
+            this.close();
+        };
+
+        // Submit on Enter key
+        this.inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                this.onSubmit(this.inputEl.value);
+                this.close();
+            } else if (e.key === 'Escape') {
+                this.onSubmit(null);
+                this.close();
+            }
+        });
+    }
+
+    onClose() {
+        const { contentEl } = this;
+        contentEl.empty();
+    }
+}
+
+// Import Modal class
+import { Modal } from "obsidian";
