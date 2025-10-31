@@ -35,8 +35,11 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
             return function(e: KeyboardEvent) {
                 originalFunc(e, null);
                 //@ts-ignore
-                modal.setTheme(modal.chooser.values[modal.chooser.selectedItem].item);
+                const selectedTheme = modal.chooser.values[modal.chooser.selectedItem].item;
+                modal.currentPreviewTheme = selectedTheme;
+                modal.setTheme(selectedTheme);
                 modal.previewing = true;
+                modal.refreshSuggestions();
             }
         }
 
@@ -200,21 +203,25 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 catTag.style.fontSize = '11px';
                 catTag.style.padding = '2px 6px';
                 catTag.style.borderRadius = '3px';
-                catTag.style.backgroundColor = 'var(--background-modifier-border)';
-                catTag.style.color = 'var(--text-muted)';
+                // Force good contrast - semi-transparent gray that works on light and dark
+                catTag.style.backgroundColor = 'rgba(128, 128, 128, 0.25)';
+                catTag.style.color = 'rgba(128, 128, 128, 0.9)';
+                catTag.style.border = '1px solid rgba(128, 128, 128, 0.3)';
                 catTag.style.cursor = 'pointer';
                 catTag.style.transition = 'all 0.15s ease';
                 catTag.title = `Click to remove "${cat}" category`;
                 
-                // Hover effect
+                // Hover effect - red with white text for maximum contrast
                 catTag.addEventListener('mouseenter', () => {
-                    catTag.style.backgroundColor = 'var(--background-modifier-error)';
-                    catTag.style.color = 'var(--text-on-accent)';
+                    catTag.style.backgroundColor = '#dc3545';
+                    catTag.style.color = '#ffffff';
+                    catTag.style.border = '1px solid #dc3545';
                     catTag.textContent = `× ${cat}`;
                 });
                 catTag.addEventListener('mouseleave', () => {
-                    catTag.style.backgroundColor = 'var(--background-modifier-border)';
-                    catTag.style.color = 'var(--text-muted)';
+                    catTag.style.backgroundColor = 'rgba(128, 128, 128, 0.25)';
+                    catTag.style.color = 'rgba(128, 128, 128, 0.9)';
+                    catTag.style.border = '1px solid rgba(128, 128, 128, 0.3)';
                     catTag.textContent = cat;
                 });
                 
@@ -239,34 +246,52 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         buttonContainer.style.display = 'flex';
         buttonContainer.style.gap = '4px';
         
-        // Preview/Apply button (eye icon → checkmark)
-        const previewBtn = buttonContainer.createEl('span', { 
-            text: '👁️',
+        // Preview/Apply button - wider and more prominent
+        const previewBtn = buttonContainer.createEl('button', { 
             cls: 'theme-preview-btn'
         });
         previewBtn.style.cursor = 'pointer';
-        previewBtn.style.padding = '0 6px';
-        previewBtn.style.fontSize = '16px';
-        previewBtn.style.opacity = '0.5';
-        previewBtn.title = 'Preview theme';
-        
-        // Hover effect for preview button
-        previewBtn.addEventListener('mouseenter', () => {
-            previewBtn.style.opacity = '1';
-        });
-        previewBtn.addEventListener('mouseleave', () => {
-            if (this.currentPreviewTheme !== match.item) {
-                previewBtn.style.opacity = '0.5';
-            }
-        });
+        previewBtn.style.padding = '4px 12px';
+        previewBtn.style.fontSize = '13px';
+        previewBtn.style.borderRadius = '4px';
+        previewBtn.style.border = '1px solid var(--background-modifier-border)';
+        previewBtn.style.transition = 'all 0.15s ease';
         
         // Check if this theme is currently being previewed
-        if (this.currentPreviewTheme === match.item) {
-            previewBtn.text = '✓';
-            previewBtn.title = 'Apply this theme';
-            previewBtn.style.opacity = '1';
-            previewBtn.style.color = '#4CAF50';
+        const isPreviewing = this.currentPreviewTheme === match.item;
+        
+        if (isPreviewing) {
+            // APPLY mode - clear distinction
+            previewBtn.textContent = '✓ Apply';
+            previewBtn.title = 'Apply this theme and close';
+            previewBtn.style.backgroundColor = '#4CAF50';
+            previewBtn.style.color = 'white';
+            previewBtn.style.border = '1px solid #4CAF50';
+            previewBtn.style.fontWeight = '600';
+        } else {
+            // PREVIEW mode
+            previewBtn.textContent = '👁 Preview';
+            previewBtn.title = 'Preview this theme';
+            previewBtn.style.backgroundColor = 'var(--background-primary)';
+            previewBtn.style.color = 'var(--text-normal)';
+            previewBtn.style.fontWeight = '400';
         }
+        
+        // Hover effect
+        previewBtn.addEventListener('mouseenter', () => {
+            if (isPreviewing) {
+                previewBtn.style.backgroundColor = '#45a049';
+            } else {
+                previewBtn.style.backgroundColor = 'var(--background-modifier-hover)';
+            }
+        });
+        previewBtn.addEventListener('mouseleave', () => {
+            if (isPreviewing) {
+                previewBtn.style.backgroundColor = '#4CAF50';
+            } else {
+                previewBtn.style.backgroundColor = 'var(--background-primary)';
+            }
+        });
         
         // Click handler for preview/apply button
         previewBtn.addEventListener('click', (event: MouseEvent) => {
@@ -274,7 +299,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
             event.stopPropagation();
             event.stopImmediatePropagation();
             
-            if (this.currentPreviewTheme === match.item) {
+            if (isPreviewing) {
                 // Apply and close
                 this.previewing = false;
                 this.currentPreviewTheme = null;
