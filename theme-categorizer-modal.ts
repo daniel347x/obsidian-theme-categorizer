@@ -149,12 +149,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         if (item === this.DEFAULT_THEME_KEY) {
             return this.DEFAULT_THEME_TEXT;
         }
-        
-        // Show categories in theme name
-        const cats = this.settings.themeCategories[item] || [];
-        if (cats.length > 0) {
-            return `${item} [${cats.join(', ')}]`;
-        }
+        // Just return theme name - categories rendered separately in renderSuggestion
         return item;
     }
 
@@ -173,12 +168,71 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         container.style.alignItems = 'center';
         container.style.width = '100%';
         
-        // Theme name with categories
-        const nameEl = container.createDiv({ 
+        // Left side container (theme name + categories)
+        const leftContainer = container.createDiv({ cls: 'theme-item-left' });
+        leftContainer.style.flex = '1';
+        leftContainer.style.display = 'flex';
+        leftContainer.style.flexWrap = 'wrap';
+        leftContainer.style.alignItems = 'center';
+        leftContainer.style.gap = '6px';
+        
+        // Theme name
+        const nameEl = leftContainer.createDiv({ 
             text: this.getItemText(match.item),
             cls: 'theme-item-name'
         });
-        nameEl.style.flex = '1';
+        nameEl.style.fontWeight = '500';
+        
+        // Categories as individual tags
+        const cats = this.settings.themeCategories[match.item] || [];
+        if (cats.length > 0) {
+            const catContainer = leftContainer.createDiv({ cls: 'theme-categories' });
+            catContainer.style.display = 'flex';
+            catContainer.style.flexWrap = 'wrap';
+            catContainer.style.gap = '4px';
+            catContainer.style.alignItems = 'center';
+            
+            cats.forEach(cat => {
+                const catTag = catContainer.createEl('span', { 
+                    text: cat,
+                    cls: 'theme-category-tag'
+                });
+                catTag.style.fontSize = '11px';
+                catTag.style.padding = '2px 6px';
+                catTag.style.borderRadius = '3px';
+                catTag.style.backgroundColor = 'var(--background-modifier-border)';
+                catTag.style.color = 'var(--text-muted)';
+                catTag.style.cursor = 'pointer';
+                catTag.style.transition = 'all 0.15s ease';
+                catTag.title = `Click to remove "${cat}" category`;
+                
+                // Hover effect
+                catTag.addEventListener('mouseenter', () => {
+                    catTag.style.backgroundColor = 'var(--background-modifier-error)';
+                    catTag.style.color = 'var(--text-on-accent)';
+                    catTag.textContent = `× ${cat}`;
+                });
+                catTag.addEventListener('mouseleave', () => {
+                    catTag.style.backgroundColor = 'var(--background-modifier-border)';
+                    catTag.style.color = 'var(--text-muted)';
+                    catTag.textContent = cat;
+                });
+                
+                // Click to remove category
+                catTag.addEventListener('click', async (event: MouseEvent) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    event.stopImmediatePropagation();
+                    
+                    // Remove category
+                    this.settings.themeCategories[match.item] = 
+                        this.settings.themeCategories[match.item].filter(c => c !== cat);
+                    await this.saveSettings();
+                    this.refreshSuggestions();
+                    new Notice(`Removed "${cat}" from ${match.item}`);
+                });
+            });
+        }
         
         // Button container
         const buttonContainer = container.createDiv({ cls: 'theme-buttons' });
