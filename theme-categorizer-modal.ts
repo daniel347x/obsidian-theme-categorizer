@@ -42,7 +42,9 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 modal.currentPreviewTheme = selectedTheme;
                 modal.setTheme(selectedTheme);
                 modal.previewing = true;
-                modal.refreshSuggestions();
+                // DON'T refresh suggestions on arrow keys - it resets chooser state
+                // In Button Preview Mode, buttons won't update, but that's fine
+                // In Arrow Preview Mode, there are no buttons to update anyway
             }
         }
 
