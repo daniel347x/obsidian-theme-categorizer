@@ -8,6 +8,7 @@ interface ThemeCategorizerSettings {
 export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
     DEFAULT_THEME_KEY = "";
     DEFAULT_THEME_TEXT = "None";
+    // v1.3.1 - Category deletion feature with X icons
     settings: ThemeCategorizerSettings;
     selectedCategory: string | null = null;
     saveSettings: () => Promise<void>;
@@ -487,11 +488,12 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                         return false;
                     });
                     
-                    // Right-click or clicking the X icon deletes the category
+                    // Clicking the X icon deletes the category globally
                     //@ts-ignore
                     const iconEl = item.dom.querySelector('.menu-item-icon');
                     if (iconEl) {
                         iconEl.addEventListener('click', async (e: MouseEvent) => {
+                            console.log('X icon clicked for category:', category);
                             e.preventDefault();
                             e.stopPropagation();
                             e.stopImmediatePropagation();
