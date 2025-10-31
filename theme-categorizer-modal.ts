@@ -139,12 +139,24 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         // Default rendering - show theme name with categories
         el.createDiv({ text: this.getItemText(match.item) });
         
-        // Add right-click context menu handler
+        // Add right-click context menu handler with capture phase
         el.addEventListener('contextmenu', (event: MouseEvent) => {
             event.preventDefault();
             event.stopPropagation();
+            event.stopImmediatePropagation();
             this.showContextMenu(event, match.item);
-        });
+            return false;
+        }, true);
+        
+        // Also prevent mousedown on right-click from triggering selection
+        el.addEventListener('mousedown', (event: MouseEvent) => {
+            if (event.button === 2) { // Right mouse button
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                return false;
+            }
+        }, true);
     }
 
     showContextMenu(event: MouseEvent, themeName: string) {
