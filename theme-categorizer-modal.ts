@@ -44,8 +44,9 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 modal.setTheme(selectedTheme);
                 modal.previewing = true;
                 
-                // Update button states without refreshing (to avoid chooser reset)
+                // Update button states and borders without refreshing (to avoid chooser reset)
                 modal.updatePreviewButtonStates(oldPreviewTheme, selectedTheme);
+                modal.updateItemBorders(oldPreviewTheme, selectedTheme);
             }
         }
 
@@ -342,6 +343,9 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 this.setTheme(match.item);
                 this.close();
             } else {
+                // Store old preview theme before changing
+                const oldPreviewTheme = this.currentPreviewTheme;
+                
                 // Preview this theme
                 this.currentPreviewTheme = match.item;
                 this.setTheme(match.item);
@@ -356,7 +360,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 //@ts-ignore
                 const itemIndex = this.chooser.values.findIndex(v => v.item === match.item);
                 
-                // Refresh suggestions to update all button states
+                // Refresh suggestions to update all button states AND borders
                 this.refreshSuggestions();
                 
                 // Restore scroll position and selection
@@ -396,10 +400,12 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
             event.stopImmediatePropagation();
             
             // Preview this theme when opening category menu
+            const oldPreviewTheme = this.currentPreviewTheme;
             this.currentPreviewTheme = match.item;
             this.setTheme(match.item);
             this.previewing = true;
-            this.updatePreviewButtonStates(null, match.item);
+            this.updatePreviewButtonStates(oldPreviewTheme, match.item);
+            this.updateItemBorders(oldPreviewTheme, match.item);
             
             this.showContextMenu(event, match.item);
         });
@@ -530,6 +536,32 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
     }
 
 
+
+    updateItemBorders(oldTheme: string | null, newTheme: string) {
+        console.log('updateItemBorders called:', { oldTheme, newTheme });
+        
+        // Find all suggestion elements
+        //@ts-ignore
+        const suggestions = this.chooser.suggestions;
+        
+        if (!suggestions) return;
+        
+        suggestions.forEach((suggestionEl: any) => {
+            const item = suggestionEl.item;
+            const el = suggestionEl.el;
+            
+            if (item === newTheme) {
+                console.log('Adding border to:', item);
+                el.style.border = '2px solid var(--interactive-accent)';
+                el.style.borderRadius = '4px';
+                el.style.padding = '4px';
+            } else if (oldTheme && item === oldTheme) {
+                console.log('Removing border from:', item);
+                el.style.border = '2px solid transparent';
+                el.style.padding = '4px';
+            }
+        });
+    }
 
     updatePreviewButtonStates(oldTheme: string | null, newTheme: string) {
         console.log('updatePreviewButtonStates called:', { oldTheme, newTheme });
