@@ -87,6 +87,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         const filterContainer = this.modalEl.createDiv({ cls: 'category-filter' });
         
         filterContainer.createEl('span', { text: 'Filter: ' });
+        filterContainer.style.marginBottom = '12px'; // Add spacing below category buttons
         
         // "All" button
         const allBtn = filterContainer.createEl('button', { 
@@ -165,6 +166,14 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
 
     // Override renderSuggestion to add category management (and optionally preview buttons)
     renderSuggestion(match: FuzzyMatch<string>, el: HTMLElement) {
+        // Add border to selected item for visibility across themes
+        //@ts-ignore
+        const isSelected = this.chooser.selectedItem === this.chooser.suggestions.indexOf(el);
+        if (isSelected) {
+            el.style.border = '2px solid var(--interactive-accent)';
+            el.style.borderRadius = '4px';
+        }
+        
         // Skip buttons for "None" default theme
         if (match.item === this.DEFAULT_THEME_KEY) {
             el.createDiv({ text: this.getItemText(match.item) });
@@ -211,9 +220,9 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 catTag.style.padding = '2px 6px';
                 catTag.style.borderRadius = '3px';
                 // Force good contrast - semi-transparent gray that works on light and dark
-                catTag.style.backgroundColor = 'rgba(128, 128, 128, 0.25)';
-                catTag.style.color = 'rgba(128, 128, 128, 0.9)';
-                catTag.style.border = '1px solid rgba(128, 128, 128, 0.3)';
+                catTag.style.backgroundColor = 'rgba(128, 128, 128, 0.4)';
+                catTag.style.color = 'rgba(200, 200, 200, 1)';
+                catTag.style.border = '1px solid rgba(128, 128, 128, 0.5)';
                 catTag.style.cursor = 'pointer';
                 catTag.style.transition = 'all 0.15s ease';
                 catTag.title = `Click to remove "${cat}" category`;
@@ -226,9 +235,9 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                     catTag.textContent = `× ${cat}`;
                 });
                 catTag.addEventListener('mouseleave', () => {
-                    catTag.style.backgroundColor = 'rgba(128, 128, 128, 0.25)';
-                    catTag.style.color = 'rgba(128, 128, 128, 0.9)';
-                    catTag.style.border = '1px solid rgba(128, 128, 128, 0.3)';
+                    catTag.style.backgroundColor = 'rgba(128, 128, 128, 0.4)';
+                    catTag.style.color = 'rgba(200, 200, 200, 1)';
+                    catTag.style.border = '1px solid rgba(128, 128, 128, 0.5)';
                     catTag.textContent = cat;
                 });
                 
@@ -469,10 +478,14 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
 
 
     updatePreviewButtonStates(oldTheme: string | null, newTheme: string) {
+        console.log('updatePreviewButtonStates called:', { oldTheme, newTheme });
+        
         // Find all preview buttons and update only the affected ones
         const allButtons = this.modalEl.querySelectorAll('.theme-preview-btn');
         //@ts-ignore
         const suggestions = this.chooser.suggestions;
+        
+        console.log('Found buttons:', allButtons.length, 'suggestions:', suggestions?.length);
         
         allButtons.forEach((btn, idx) => {
             if (!suggestions[idx]) return;
@@ -480,6 +493,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
             const themeName = suggestions[idx].item;
             
             if (themeName === newTheme) {
+                console.log('Setting green button for:', themeName);
                 // This is now the previewed theme - make it green Apply button
                 btn.textContent = '✓ Apply';
                 btn.setAttribute('title', 'Apply this theme and close');
@@ -488,6 +502,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 (btn as HTMLElement).style.border = '1px solid #4CAF50';
                 (btn as HTMLElement).style.fontWeight = '600';
             } else if (oldTheme && themeName === oldTheme) {
+                console.log('Reverting button for:', themeName);
                 // This was the old preview - revert to Preview button
                 btn.textContent = '👁 Preview';
                 btn.setAttribute('title', 'Preview this theme');
