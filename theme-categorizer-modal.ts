@@ -14,6 +14,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
 
     initialTheme: string;
     previewing = false;
+    currentPreviewTheme: string | null = null;
 
     constructor(app: App, settings: ThemeCategorizerSettings, saveSettings: () => Promise<void>) {
         super(app);
@@ -70,6 +71,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         if (this.previewing) {
             this.setTheme(this.initialTheme);
         }
+        this.currentPreviewTheme = null;
     }
 
     addCategoryFilter() {
@@ -156,9 +158,9 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         return item;
     }
 
-    // Override renderSuggestion to add category management button
+    // Override renderSuggestion to add preview and category management buttons
     renderSuggestion(match: FuzzyMatch<string>, el: HTMLElement) {
-        // Skip menu button for "None" default theme
+        // Skip buttons for "None" default theme
         if (match.item === this.DEFAULT_THEME_KEY) {
             el.createDiv({ text: this.getItemText(match.item) });
             return;
@@ -178,18 +180,73 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         });
         nameEl.style.flex = '1';
         
+        // Button container
+        const buttonContainer = container.createDiv({ cls: 'theme-buttons' });
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.gap = '4px';
+        
+        // Preview/Apply button (eye icon → checkmark)
+        const previewBtn = buttonContainer.createEl('span', { 
+            text: '👁️',
+            cls: 'theme-preview-btn'
+        });
+        previewBtn.style.cursor = 'pointer';
+        previewBtn.style.padding = '0 6px';
+        previewBtn.style.fontSize = '16px';
+        previewBtn.style.opacity = '0.5';
+        previewBtn.title = 'Preview theme';
+        
+        // Hover effect for preview button
+        previewBtn.addEventListener('mouseenter', () => {
+            previewBtn.style.opacity = '1';
+        });
+        previewBtn.addEventListener('mouseleave', () => {
+            if (this.currentPreviewTheme !== match.item) {
+                previewBtn.style.opacity = '0.5';
+            }
+        });
+        
+        // Check if this theme is currently being previewed
+        if (this.currentPreviewTheme === match.item) {
+            previewBtn.text = '✓';
+            previewBtn.title = 'Apply this theme';
+            previewBtn.style.opacity = '1';
+            previewBtn.style.color = '#4CAF50';
+        }
+        
+        // Click handler for preview/apply button
+        previewBtn.addEventListener('click', (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            
+            if (this.currentPreviewTheme === match.item) {
+                // Apply and close
+                this.previewing = false;
+                this.currentPreviewTheme = null;
+                this.setTheme(match.item);
+                this.close();
+            } else {
+                // Preview this theme
+                this.currentPreviewTheme = match.item;
+                this.setTheme(match.item);
+                this.previewing = true;
+                this.refreshSuggestions();
+            }
+        });
+        
         // Category menu button (three dots)
-        const menuBtn = container.createEl('span', { 
+        const menuBtn = buttonContainer.createEl('span', { 
             text: '⋮',
             cls: 'theme-category-btn'
         });
         menuBtn.style.cursor = 'pointer';
-        menuBtn.style.padding = '0 8px';
+        menuBtn.style.padding = '0 6px';
         menuBtn.style.fontSize = '18px';
         menuBtn.style.opacity = '0.5';
         menuBtn.title = 'Manage categories';
         
-        // Hover effect
+        // Hover effect for menu button
         menuBtn.addEventListener('mouseenter', () => {
             menuBtn.style.opacity = '1';
         });
@@ -317,6 +374,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
 
     onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): void {
         this.previewing = false;
+        this.currentPreviewTheme = null;
         this.setTheme(item);
     }
 
