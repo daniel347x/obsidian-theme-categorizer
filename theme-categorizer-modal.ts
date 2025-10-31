@@ -538,10 +538,6 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
 
             menu.addSeparator();
         }
-            });
-
-            menu.addSeparator();
-        }
 
         // Add new category
         menu.addItem((item) => {
