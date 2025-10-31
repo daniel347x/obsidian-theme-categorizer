@@ -88,8 +88,8 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         const filterContainer = this.modalEl.createDiv({ cls: 'category-filter' });
         
         filterContainer.createEl('span', { text: 'Filter: ' });
-        filterContainer.style.marginBottom = '20px'; // Add spacing below category buttons
-        filterContainer.style.paddingBottom = '12px'; // Extra padding for visual separation
+        filterContainer.style.marginTop = '20px'; // Add spacing above category buttons
+        filterContainer.style.paddingTop = '12px'; // Extra padding for visual separation
         
         // "All" button
         const allBtn = filterContainer.createEl('button', { 
@@ -448,17 +448,19 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 menu.addItem((item) => {
                     item
                         .setTitle(`${isActive ? '✓ ' : ''}${category}`)
-                        .setIcon(isActive ? 'checkbox-glyph' : 'circle')
+                        // No icon - just text
                         .onClick(async () => {
                         if (isActive) {
                         // Remove category
                         this.settings.themeCategories[themeName] = currentCategories.filter(c => c !== category);
                         } else {
-                        // Add category
+                        // Add category - only if not already present
                         if (!this.settings.themeCategories[themeName]) {
                         this.settings.themeCategories[themeName] = [];
                         }
-                        this.settings.themeCategories[themeName].push(category);
+                        if (!this.settings.themeCategories[themeName].includes(category)) {
+                            this.settings.themeCategories[themeName].push(category);
+                        }
                         }
                         await this.saveSettings();
                         
@@ -544,11 +546,21 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         //@ts-ignore
         const suggestions = this.chooser.suggestions;
         
-        if (!suggestions) return;
+        if (!suggestions) {
+            console.log('No suggestions found');
+            return;
+        }
+        
+        console.log('Total suggestions:', suggestions.length);
         
         suggestions.forEach((suggestionEl: any) => {
             const item = suggestionEl.item;
             const el = suggestionEl.el;
+            
+            if (!el) {
+                console.log('No element for item:', item);
+                return;
+            }
             
             if (item === newTheme) {
                 console.log('Adding border to:', item);
@@ -558,6 +570,12 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
             } else if (oldTheme && item === oldTheme) {
                 console.log('Removing border from:', item);
                 el.style.border = '2px solid transparent';
+                el.style.padding = '4px';
+            } else if (item === this.currentPreviewTheme) {
+                // Also update any existing preview theme border
+                console.log('Updating existing preview border:', item);
+                el.style.border = '2px solid var(--interactive-accent)';
+                el.style.borderRadius = '4px';
                 el.style.padding = '4px';
             }
         });
