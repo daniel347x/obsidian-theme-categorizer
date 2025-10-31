@@ -16,8 +16,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
     previewing = false;
     currentPreviewTheme: string | null = null;
     
-    // Toggle between arrow preview mode and button preview mode
-    useButtonPreview = false;
+
 
     constructor(app: App, settings: ThemeCategorizerSettings, saveSettings: () => Promise<void>) {
         super(app);
@@ -36,15 +35,17 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
 
         const wrapWithPreview = (originalFunc: KeymapEventListener, modal: ThemeCategorizerModal) => {
             return function(e: KeyboardEvent) {
+                const oldPreviewTheme = modal.currentPreviewTheme;
+                
                 originalFunc(e, null);
                 //@ts-ignore
                 const selectedTheme = modal.chooser.values[modal.chooser.selectedItem].item;
                 modal.currentPreviewTheme = selectedTheme;
                 modal.setTheme(selectedTheme);
                 modal.previewing = true;
-                // DON'T refresh suggestions on arrow keys - it resets chooser state
-                // In Button Preview Mode, buttons won't update, but that's fine
-                // In Arrow Preview Mode, there are no buttons to update anyway
+                
+                // Update button states without refreshing (to avoid chooser reset)
+                modal.updatePreviewButtonStates(oldPreviewTheme, selectedTheme);
             }
         }
 
@@ -84,20 +85,6 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
 
     addCategoryFilter() {
         const filterContainer = this.modalEl.createDiv({ cls: 'category-filter' });
-        
-        // Preview mode toggle
-        const modeToggle = filterContainer.createEl('button', {
-            text: this.useButtonPreview ? '🖱️ Button Preview' : '⌨️ Arrow Preview',
-            cls: 'preview-mode-toggle'
-        });
-        modeToggle.style.marginRight = '12px';
-        modeToggle.style.padding = '4px 8px';
-        modeToggle.style.fontSize = '12px';
-        modeToggle.style.fontWeight = '600';
-        modeToggle.onclick = () => {
-            this.useButtonPreview = !this.useButtonPreview;
-            this.refreshSuggestions();
-        };
         
         filterContainer.createEl('span', { text: 'Filter: ' });
         
@@ -266,8 +253,6 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         buttonContainer.style.display = 'flex';
         buttonContainer.style.gap = '4px';
         
-        // Only show preview button in button preview mode
-        if (this.useButtonPreview) {
         
         // Preview/Apply button - wider and more prominent
         const previewBtn = buttonContainer.createEl('button', { 
@@ -356,9 +341,8 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 }
             }
         });
-        } // End of button preview mode check
         
-        // Category menu button (three dots) - always visible
+        // Category menu button (three dots)
         const menuBtn = buttonContainer.createEl('span', { 
             text: '⋮',
             cls: 'theme-category-btn'
@@ -483,6 +467,37 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
     }
 
 
+
+    updatePreviewButtonStates(oldTheme: string | null, newTheme: string) {
+        // Find all preview buttons and update only the affected ones
+        const allButtons = this.modalEl.querySelectorAll('.theme-preview-btn');
+        //@ts-ignore
+        const suggestions = this.chooser.suggestions;
+        
+        allButtons.forEach((btn, idx) => {
+            if (!suggestions[idx]) return;
+            //@ts-ignore
+            const themeName = suggestions[idx].item;
+            
+            if (themeName === newTheme) {
+                // This is now the previewed theme - make it green Apply button
+                btn.textContent = '✓ Apply';
+                btn.setAttribute('title', 'Apply this theme and close');
+                (btn as HTMLElement).style.backgroundColor = '#4CAF50';
+                (btn as HTMLElement).style.color = 'white';
+                (btn as HTMLElement).style.border = '1px solid #4CAF50';
+                (btn as HTMLElement).style.fontWeight = '600';
+            } else if (oldTheme && themeName === oldTheme) {
+                // This was the old preview - revert to Preview button
+                btn.textContent = '👁 Preview';
+                btn.setAttribute('title', 'Preview this theme');
+                (btn as HTMLElement).style.backgroundColor = 'var(--background-primary)';
+                (btn as HTMLElement).style.color = 'var(--text-normal)';
+                (btn as HTMLElement).style.border = '1px solid var(--background-modifier-border)';
+                (btn as HTMLElement).style.fontWeight = '400';
+            }
+        });
+    }
 
     refreshSuggestions() {
         // Refresh the category filter buttons
