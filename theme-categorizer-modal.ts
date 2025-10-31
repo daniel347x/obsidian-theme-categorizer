@@ -97,6 +97,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
             text: 'All',
             cls: this.selectedCategory === null ? 'is-active' : ''
         });
+        allBtn.style.marginRight = '4px';
         allBtn.onclick = () => {
             this.selectedCategory = null;
             this.updateCategoryButtons();
@@ -111,6 +112,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 text: cat,
                 cls: this.selectedCategory === cat ? 'is-active' : ''
             });
+            btn.style.marginRight = '4px';
             btn.onclick = () => {
                 this.selectedCategory = cat;
                 this.updateCategoryButtons();
@@ -250,16 +252,23 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                         this.settings.themeCategories[match.item].filter(c => c !== cat);
                     await this.saveSettings();
                     
-                    // Get current scroll position before refresh
+                    // Get current scroll position and selected item before refresh
                     //@ts-ignore
                     const scrollContainer = this.modalEl.querySelector('.prompt-results');
                     const scrollTop = scrollContainer?.scrollTop || 0;
+                    //@ts-ignore
+                    const selectedIndex = this.chooser.selectedItem;
                     
                     this.refreshSuggestions();
                     
-                    // Restore scroll position
+                    // Restore scroll position and selection
                     if (scrollContainer) {
                         scrollContainer.scrollTop = scrollTop;
+                    }
+                    //@ts-ignore
+                    if (selectedIndex >= 0) {
+                        //@ts-ignore
+                        this.chooser.setSelectedItem(selectedIndex);
                     }
                     
                     new Notice(`Removed "${cat}" from ${match.item}`);
@@ -427,51 +436,48 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         const currentCategories = this.settings.themeCategories[themeName] || [];
         const allCategories = this.getAllCategories();
 
-        // Section: Toggle existing categories
+        // Section: Add existing categories (no checkmarks, only adds if not present)
         if (allCategories.length > 0) {
             menu.addItem((item) => {
-                item.setTitle("Categories:");
+                item.setTitle("Add Category:");
                 item.setDisabled(true);
             });
 
             allCategories.forEach(category => {
-                const isActive = currentCategories.includes(category);
                 menu.addItem((item) => {
                     item
-                        .setTitle(`${isActive ? '✓ ' : ''}${category}`)
-                        // No icon - just text
+                        .setTitle(category)
                         .onClick(async () => {
-                        if (isActive) {
-                        // Remove category
-                        this.settings.themeCategories[themeName] = currentCategories.filter(c => c !== category);
-                        } else {
-                        // Add category - only if not already present
+                        // Only add - never remove
                         if (!this.settings.themeCategories[themeName]) {
-                        this.settings.themeCategories[themeName] = [];
+                            this.settings.themeCategories[themeName] = [];
                         }
+                        
+                        // Add only if not already present
                         if (!this.settings.themeCategories[themeName].includes(category)) {
                             this.settings.themeCategories[themeName].push(category);
-                        }
-                        }
-                        await this.saveSettings();
-                        
-                        // Get current scroll position and selected item before refresh
-                        //@ts-ignore
-                        const scrollContainer = this.modalEl.querySelector('.prompt-results');
-                        const scrollTop = scrollContainer?.scrollTop || 0;
-                        //@ts-ignore
-                        const selectedIndex = this.chooser.selectedItem;
-                        
-                        this.refreshSuggestions();
-                        
-                        // Restore scroll position and selection
-                        if (scrollContainer) {
-                            scrollContainer.scrollTop = scrollTop;
-                        }
-                        //@ts-ignore
-                        if (selectedIndex >= 0) {
+                            await this.saveSettings();
+                            
+                            // Get current scroll position and selected item before refresh
                             //@ts-ignore
-                            this.chooser.setSelectedItem(selectedIndex);
+                            const scrollContainer = this.modalEl.querySelector('.prompt-results');
+                            const scrollTop = scrollContainer?.scrollTop || 0;
+                            //@ts-ignore
+                            const selectedIndex = this.chooser.selectedItem;
+                            
+                            this.refreshSuggestions();
+                            
+                            // Restore scroll position and selection
+                            if (scrollContainer) {
+                                scrollContainer.scrollTop = scrollTop;
+                            }
+                            //@ts-ignore
+                            if (selectedIndex >= 0) {
+                                //@ts-ignore
+                                this.chooser.setSelectedItem(selectedIndex);
+                            }
+                            
+                            new Notice(`Added "${category}" to ${themeName}`);
                         }
                         
                         // Don't close menu - let user continue selecting
