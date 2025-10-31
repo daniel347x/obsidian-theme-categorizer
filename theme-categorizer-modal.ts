@@ -306,26 +306,31 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 this.setTheme(match.item);
                 this.close();
             } else {
-                // Store old preview theme to revert its button
-                const oldPreviewTheme = this.currentPreviewTheme;
-                
                 // Preview this theme
                 this.currentPreviewTheme = match.item;
                 this.setTheme(match.item);
                 this.previewing = true;
                 
-                // CRITICAL: Update chooser's selected item so arrow keys work from here
+                // Get current scroll position before refresh
+                //@ts-ignore
+                const scrollContainer = this.modalEl.querySelector('.prompt-results');
+                const scrollTop = scrollContainer?.scrollTop || 0;
+                
+                // Find the index of this item in the current list
                 //@ts-ignore
                 const itemIndex = this.chooser.values.findIndex(v => v.item === match.item);
+                
+                // Refresh suggestions to update all button states
+                this.refreshSuggestions();
+                
+                // Restore scroll position and selection
                 if (itemIndex >= 0) {
                     //@ts-ignore
                     this.chooser.setSelectedItem(itemIndex);
-                    //@ts-ignore
-                    this.chooser.suggestions[itemIndex]?.scrollIntoViewIfNeeded();
+                    if (scrollContainer) {
+                        scrollContainer.scrollTop = scrollTop;
+                    }
                 }
-                
-                // Manually update button states without refreshing suggestions (which resets everything)
-                this.updatePreviewButtons(oldPreviewTheme, match.item);
             }
         });
         
@@ -453,36 +458,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         });
     }
 
-    updatePreviewButtons(oldTheme: string | null, newTheme: string) {
-        // Find all preview buttons and update their states
-        const allButtons = this.modalEl.querySelectorAll('.theme-preview-btn');
-        //@ts-ignore
-        const suggestions = this.chooser.suggestions;
-        
-        allButtons.forEach((btn, idx) => {
-            if (!suggestions[idx]) return;
-            //@ts-ignore
-            const themeName = suggestions[idx].item;
-            
-            if (themeName === newTheme) {
-                // This is now the previewed theme - make it green Apply button
-                btn.textContent = '✓ Apply';
-                btn.setAttribute('title', 'Apply this theme and close');
-                (btn as HTMLElement).style.backgroundColor = '#4CAF50';
-                (btn as HTMLElement).style.color = 'white';
-                (btn as HTMLElement).style.border = '1px solid #4CAF50';
-                (btn as HTMLElement).style.fontWeight = '600';
-            } else if (oldTheme && themeName === oldTheme) {
-                // This was the old preview - revert to Preview button
-                btn.textContent = '👁 Preview';
-                btn.setAttribute('title', 'Preview this theme');
-                (btn as HTMLElement).style.backgroundColor = 'var(--background-primary)';
-                (btn as HTMLElement).style.color = 'var(--text-normal)';
-                (btn as HTMLElement).style.border = '1px solid var(--background-modifier-border)';
-                (btn as HTMLElement).style.fontWeight = '400';
-            }
-        });
-    }
+
 
     refreshSuggestions() {
         // Refresh the category filter buttons
