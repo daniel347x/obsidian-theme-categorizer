@@ -87,7 +87,8 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         const filterContainer = this.modalEl.createDiv({ cls: 'category-filter' });
         
         filterContainer.createEl('span', { text: 'Filter: ' });
-        filterContainer.style.marginBottom = '12px'; // Add spacing below category buttons
+        filterContainer.style.marginBottom = '20px'; // Add spacing below category buttons
+        filterContainer.style.paddingBottom = '12px'; // Extra padding for visual separation
         
         // "All" button
         const allBtn = filterContainer.createEl('button', { 
@@ -166,12 +167,14 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
 
     // Override renderSuggestion to add category management (and optionally preview buttons)
     renderSuggestion(match: FuzzyMatch<string>, el: HTMLElement) {
-        // Add border to selected item for visibility across themes
-        //@ts-ignore
-        const isSelected = this.chooser.selectedItem === this.chooser.suggestions.indexOf(el);
-        if (isSelected) {
+        // Add border to currently previewed item
+        if (match.item === this.currentPreviewTheme) {
             el.style.border = '2px solid var(--interactive-accent)';
             el.style.borderRadius = '4px';
+            el.style.padding = '4px';
+        } else {
+            el.style.border = '2px solid transparent';
+            el.style.padding = '4px';
         }
         
         // Skip buttons for "None" default theme
@@ -225,6 +228,8 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 catTag.style.border = '1px solid rgba(128, 128, 128, 0.5)';
                 catTag.style.cursor = 'pointer';
                 catTag.style.transition = 'all 0.15s ease';
+                catTag.style.minWidth = '60px'; // Make tags more clickable
+                catTag.style.textAlign = 'center';
                 catTag.title = `Click to remove "${cat}" category`;
                 
                 // Hover effect - red with white text for maximum contrast
@@ -241,7 +246,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                     catTag.textContent = cat;
                 });
                 
-                // Click to remove category
+                // Click entire tag to remove category (not just X)
                 catTag.addEventListener('click', async (event: MouseEvent) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -251,7 +256,19 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                     this.settings.themeCategories[match.item] = 
                         this.settings.themeCategories[match.item].filter(c => c !== cat);
                     await this.saveSettings();
+                    
+                    // Get current scroll position before refresh
+                    //@ts-ignore
+                    const scrollContainer = this.modalEl.querySelector('.prompt-results');
+                    const scrollTop = scrollContainer?.scrollTop || 0;
+                    
                     this.refreshSuggestions();
+                    
+                    // Restore scroll position
+                    if (scrollContainer) {
+                        scrollContainer.scrollTop = scrollTop;
+                    }
+                    
                     new Notice(`Removed "${cat}" from ${match.item}`);
                 });
             });
@@ -377,12 +394,33 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
+            
+            // Preview this theme when opening category menu
+            this.currentPreviewTheme = match.item;
+            this.setTheme(match.item);
+            this.previewing = true;
+            this.updatePreviewButtonStates(null, match.item);
+            
             this.showContextMenu(event, match.item);
         });
     }
 
     showContextMenu(event: MouseEvent, themeName: string) {
         const menu = new Menu();
+        
+        // Don't auto-close menu on item click - let user select multiple categories
+        //@ts-ignore
+        menu.dom.addEventListener('click', (e: MouseEvent) => {
+            // Only close if clicking outside menu items or on specific close actions
+            if ((e.target as HTMLElement).classList.contains('menu-item-icon') ||
+                (e.target as HTMLElement).textContent?.includes('Add new category') ||
+                (e.target as HTMLElement).textContent?.includes('Remove all')) {
+                // Let these close normally
+            } else {
+                // Prevent menu from closing
+                e.stopPropagation();
+            }
+        });
         
         // Skip context menu for "None" default theme
         if (themeName === this.DEFAULT_THEME_KEY) {
@@ -406,19 +444,33 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                         .setTitle(`${isActive ? '✓ ' : ''}${category}`)
                         .setIcon(isActive ? 'checkbox-glyph' : 'circle')
                         .onClick(async () => {
-                            if (isActive) {
-                                // Remove category
-                                this.settings.themeCategories[themeName] = currentCategories.filter(c => c !== category);
-                            } else {
-                                // Add category
-                                if (!this.settings.themeCategories[themeName]) {
-                                    this.settings.themeCategories[themeName] = [];
-                                }
-                                this.settings.themeCategories[themeName].push(category);
-                            }
-                            await this.saveSettings();
-                            this.refreshSuggestions();
-                        });
+                        if (isActive) {
+                        // Remove category
+                        this.settings.themeCategories[themeName] = currentCategories.filter(c => c !== category);
+                        } else {
+                        // Add category
+                        if (!this.settings.themeCategories[themeName]) {
+                        this.settings.themeCategories[themeName] = [];
+                        }
+                        this.settings.themeCategories[themeName].push(category);
+                        }
+                        await this.saveSettings();
+                        
+                            // Get current scroll position before refresh
+                    //@ts-ignore
+                    const scrollContainer = this.modalEl.querySelector('.prompt-results');
+                    const scrollTop = scrollContainer?.scrollTop || 0;
+                    
+                    this.refreshSuggestions();
+                    
+                    // Restore scroll position
+                    if (scrollContainer) {
+                        scrollContainer.scrollTop = scrollTop;
+                    }
+                    
+                    // Don't close menu - let user continue selecting
+                    return false;
+                });
                 });
             });
 
