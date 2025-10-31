@@ -24,6 +24,13 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         //@ts-ignore
         this.bgEl.setAttribute("style", "background-color: transparent");
         this.modalEl.classList.add("theme-categorizer-modal");
+        
+        // Disable search input to prevent focus stealing (Idea #1)
+        //@ts-ignore
+        if (this.inputEl) {
+            //@ts-ignore
+            this.inputEl.style.display = 'none';
+        }
 
         // Add theme preview on arrow key navigation
         //@ts-ignore
@@ -329,6 +336,23 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                     this.chooser.setSelectedItem(itemIndex);
                     if (scrollContainer) {
                         scrollContainer.scrollTop = scrollTop;
+                    }
+                }
+                
+                // Idea #2: Explicitly focus the suggestion container
+                //@ts-ignore
+                if (scrollContainer) {
+                    scrollContainer.focus();
+                }
+                
+                // Idea #3: Blur the input if it grabbed focus
+                //@ts-ignore
+                if (this.inputEl && document.activeElement === this.inputEl) {
+                    //@ts-ignore
+                    this.inputEl.blur();
+                    //@ts-ignore
+                    if (scrollContainer) {
+                        scrollContainer.focus();
                     }
                 }
             }
