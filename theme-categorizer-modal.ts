@@ -15,6 +15,9 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
     initialTheme: string;
     previewing = false;
     currentPreviewTheme: string | null = null;
+    
+    // Toggle between arrow preview mode and button preview mode
+    useButtonPreview = false;
 
     constructor(app: App, settings: ThemeCategorizerSettings, saveSettings: () => Promise<void>) {
         super(app);
@@ -24,13 +27,6 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         //@ts-ignore
         this.bgEl.setAttribute("style", "background-color: transparent");
         this.modalEl.classList.add("theme-categorizer-modal");
-        
-        // Disable search input to prevent focus stealing (Idea #1)
-        //@ts-ignore
-        if (this.inputEl) {
-            //@ts-ignore
-            this.inputEl.style.display = 'none';
-        }
 
         // Add theme preview on arrow key navigation
         //@ts-ignore
@@ -86,6 +82,21 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
 
     addCategoryFilter() {
         const filterContainer = this.modalEl.createDiv({ cls: 'category-filter' });
+        
+        // Preview mode toggle
+        const modeToggle = filterContainer.createEl('button', {
+            text: this.useButtonPreview ? '🖱️ Button Preview' : '⌨️ Arrow Preview',
+            cls: 'preview-mode-toggle'
+        });
+        modeToggle.style.marginRight = '12px';
+        modeToggle.style.padding = '4px 8px';
+        modeToggle.style.fontSize = '12px';
+        modeToggle.style.fontWeight = '600';
+        modeToggle.onclick = () => {
+            this.useButtonPreview = !this.useButtonPreview;
+            this.refreshSuggestions();
+        };
+        
         filterContainer.createEl('span', { text: 'Filter: ' });
         
         // "All" button
@@ -163,7 +174,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         return item;
     }
 
-    // Override renderSuggestion to add preview and category management buttons
+    // Override renderSuggestion to add category management (and optionally preview buttons)
     renderSuggestion(match: FuzzyMatch<string>, el: HTMLElement) {
         // Skip buttons for "None" default theme
         if (match.item === this.DEFAULT_THEME_KEY) {
@@ -253,6 +264,9 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         buttonContainer.style.display = 'flex';
         buttonContainer.style.gap = '4px';
         
+        // Only show preview button in button preview mode
+        if (this.useButtonPreview) {
+        
         // Preview/Apply button - wider and more prominent
         const previewBtn = buttonContainer.createEl('button', { 
             cls: 'theme-preview-btn'
@@ -338,27 +352,11 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                         scrollContainer.scrollTop = scrollTop;
                     }
                 }
-                
-                // Idea #2: Explicitly focus the suggestion container
-                //@ts-ignore
-                if (scrollContainer) {
-                    scrollContainer.focus();
-                }
-                
-                // Idea #3: Blur the input if it grabbed focus
-                //@ts-ignore
-                if (this.inputEl && document.activeElement === this.inputEl) {
-                    //@ts-ignore
-                    this.inputEl.blur();
-                    //@ts-ignore
-                    if (scrollContainer) {
-                        scrollContainer.focus();
-                    }
-                }
             }
         });
+        } // End of button preview mode check
         
-        // Category menu button (three dots)
+        // Category menu button (three dots) - always visible
         const menuBtn = buttonContainer.createEl('span', { 
             text: '⋮',
             cls: 'theme-category-btn'
