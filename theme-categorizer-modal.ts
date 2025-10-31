@@ -1,4 +1,4 @@
-import { App, FuzzySuggestModal, FuzzyMatch, Menu, Notice } from "obsidian";
+import { App, FuzzySuggestModal, FuzzyMatch, Menu, Notice, KeymapEventListener } from "obsidian";
 
 interface ThemeCategorizerSettings {
     themeCategories: { [themeName: string]: string[] };
@@ -23,6 +23,28 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         //@ts-ignore
         this.bgEl.setAttribute("style", "background-color: transparent");
         this.modalEl.classList.add("theme-categorizer-modal");
+
+        // Add theme preview on arrow key navigation
+        //@ts-ignore
+        const originalArrowUpEvent = this.scope.keys.find((key) => key.key === "ArrowUp");
+        //@ts-ignore
+        const originalArrowDownEvent = this.scope.keys.find((key) => key.key === "ArrowDown");
+
+        const wrapWithPreview = (originalFunc: KeymapEventListener, modal: ThemeCategorizerModal) => {
+            return function(e: KeyboardEvent) {
+                originalFunc(e, null);
+                //@ts-ignore
+                modal.setTheme(modal.chooser.values[modal.chooser.selectedItem].item);
+                modal.previewing = true;
+            }
+        }
+
+        if (originalArrowUpEvent) {
+            originalArrowUpEvent.func = wrapWithPreview(originalArrowUpEvent.func, this);
+        }
+        if (originalArrowDownEvent) {
+            originalArrowDownEvent.func = wrapWithPreview(originalArrowDownEvent.func, this);
+        }
     }
 
     onOpen() {
