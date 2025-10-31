@@ -557,8 +557,8 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
             const item = suggestionEl.item;
             const el = suggestionEl.el;
             
-            if (!el) {
-                console.log('No element for item:', item);
+            // Skip undefined items (like "None" default theme)
+            if (!item || !el) {
                 return;
             }
             
@@ -571,11 +571,9 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 console.log('Removing border from:', item);
                 el.style.border = '2px solid transparent';
                 el.style.padding = '4px';
-            } else if (item === this.currentPreviewTheme) {
-                // Also update any existing preview theme border
-                console.log('Updating existing preview border:', item);
-                el.style.border = '2px solid var(--interactive-accent)';
-                el.style.borderRadius = '4px';
+            } else {
+                // Reset any other items to transparent border
+                el.style.border = '2px solid transparent';
                 el.style.padding = '4px';
             }
         });
