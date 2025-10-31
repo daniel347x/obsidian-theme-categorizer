@@ -445,9 +445,12 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
 
             allCategories.forEach(category => {
                 menu.addItem((item) => {
-                    item
-                        .setTitle(category)
-                        .onClick(async () => {
+                    const menuItem = item.setTitle(category);
+                    
+                    // Add X button to delete category entirely
+                    menuItem.setIcon('cross');
+                    
+                    menuItem.onClick(async () => {
                         // Only add - never remove
                         if (!this.settings.themeCategories[themeName]) {
                             this.settings.themeCategories[themeName] = [];
@@ -482,8 +485,59 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                         
                         // Don't close menu - let user continue selecting
                         return false;
+                    });
+                    
+                    // Right-click or clicking the X icon deletes the category
+                    //@ts-ignore
+                    const iconEl = item.dom.querySelector('.menu-item-icon');
+                    if (iconEl) {
+                        iconEl.addEventListener('click', async (e: MouseEvent) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                            
+                            // Confirm deletion
+                            const confirmed = confirm(`Delete category "${category}" from ALL themes?`);
+                            if (!confirmed) return;
+                            
+                            // Remove category from all themes
+                            Object.keys(this.settings.themeCategories).forEach(theme => {
+                                this.settings.themeCategories[theme] = 
+                                    this.settings.themeCategories[theme].filter(c => c !== category);
+                            });
+                            
+                            await this.saveSettings();
+                            
+                            // Get current scroll position and selected item before refresh
+                            //@ts-ignore
+                            const scrollContainer = this.modalEl.querySelector('.prompt-results');
+                            const scrollTop = scrollContainer?.scrollTop || 0;
+                            //@ts-ignore
+                            const selectedIndex = this.chooser.selectedItem;
+                            
+                            // Close menu
+                            menu.hide();
+                            
+                            this.refreshSuggestions();
+                            
+                            // Restore scroll position and selection
+                            if (scrollContainer) {
+                                scrollContainer.scrollTop = scrollTop;
+                            }
+                            //@ts-ignore
+                            if (selectedIndex >= 0) {
+                                //@ts-ignore
+                                this.chooser.setSelectedItem(selectedIndex);
+                            }
+                            
+                            new Notice(`Deleted category "${category}" from all themes`);
+                        });
+                    }
                 });
-                });
+            });
+
+            menu.addSeparator();
+        }
             });
 
             menu.addSeparator();
