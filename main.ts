@@ -1,75 +1,162 @@
-import { Plugin } from 'obsidian';
-import ThemePickerPluginModal from 'theme-picker-modal';
+import { Plugin, PluginSettingTab, Setting, App, Modal, TextComponent } from 'obsidian';
+import ThemeCategorizerModal from './theme-categorizer-modal';
 
-export default class ThemePicker extends Plugin {
-	DARK_MODE_THEME_KEY = "obsidian";
-	LIGHT_MODE_THEME_KEY = "moonstone";
+interface ThemeCategorizerSettings {
+    themeCategories: { [themeName: string]: string[] };
+    categoryColors: { [categoryName: string]: string };
+}
 
-	colorSchemeIcon: SVGSVGElement;
-	moonIconSvg = `<path fill="none" d="M0 0h24v24H0z"/><path d="M10 7a7 7 0 0 0 12 4.9v.1c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2h.1A6.979 6.979 0 0 0 10 7zm-6 5a8 8 0 0 0 15.062 3.762A9 9 0 0 1 8.238 4.938 7.999 7.999 0 0 0 4 12z"/>`;
-	sunIconSvg = `<path fill="none" d="M0 0h24v24H0z"/><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-2a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 1h2v3h-2V1zm0 19h2v3h-2v-3zM3.515 4.929l1.414-1.414L7.05 5.636 5.636 7.05 3.515 4.93zM16.95 18.364l1.414-1.414 2.121 2.121-1.414 1.414-2.121-2.121zm2.121-14.85l1.414 1.415-2.121 2.121-1.414-1.414 2.121-2.121zM5.636 16.95l1.414 1.414-2.121 2.121-1.414-1.414 2.121-2.121zM23 11v2h-3v-2h3zM4 11v2H1v-2h3z"/>`;
+const DEFAULT_SETTINGS: ThemeCategorizerSettings = {
+    themeCategories: {},
+    categoryColors: {}
+};
 
-	async onload() {
-		this.colorSchemeIcon = this.initializeColorSchemeIcon();
-		const themePickerStatusBarItem: HTMLElement = this.addStatusBarItem();
+export default class ThemeCategorizerPlugin extends Plugin {
+    settings: ThemeCategorizerSettings;
 
-		const changeThemeButton: HTMLElement = themePickerStatusBarItem.createDiv({
-			cls: "status-bar-item mod-clickable",
-			text: "Change Theme"
-		});
-		changeThemeButton.addEventListener("click", () => {
-			new ThemePickerPluginModal(this.app).open();
-		});
+    async onload() {
+        await this.loadSettings();
+        this.addCommand({
+            id: 'open-theme-categorizer',
+            name: 'Open Theme Categorizer',
+            callback: () => new ThemeCategorizerModal(this.app, this.settings).open()
+        });
+        this.addSettingTab(new ThemeCategorizerSettingTab(this.app, this));
+    }
 
-		const changeColorSchemeButton: HTMLElement = themePickerStatusBarItem.createDiv({
-			cls: "status-bar-item mod-clickable theme-picker-color-scheme-icon",
-		});
-		changeColorSchemeButton.addEventListener("click", () => this.toggleColorScheme());
-		changeColorSchemeButton.appendChild(this.colorSchemeIcon);
+    async loadSettings() {
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    }
 
-		this.addCommand({
-			id: 'open-theme-picker',
-			name: 'Open Theme Picker',
-			callback: () => new ThemePickerPluginModal(this.app).open()
-		});
+    async saveSettings() {
+        await this.saveData(this.settings);
+    }
 
-		this.registerEvent(
-			this.app.workspace.on("css-change", () => {
-				this.colorSchemeIcon.innerHTML = this.getColorSchemeIcon();
-			})
-		);
-	}
+    getInstalledThemes(): string[] {
+        //@ts-ignore
+        return [...Object.keys(this.app.customCss.themes || {}), ...(this.app.customCss.oldThemes || [])];
+    }
 
-	initializeColorSchemeIcon(): SVGSVGElement {
-		const colorSchemeIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-		colorSchemeIcon.setAttribute("viewBox", "0 0 22 22");
-		colorSchemeIcon.setAttribute("width", "14");
-		colorSchemeIcon.setAttribute("height", "14");
-		colorSchemeIcon.innerHTML = this.getColorSchemeIcon();
+    getAllCategories(): string[] {
+        const categories = new Set<string>();
+        Object.values(this.settings.themeCategories).forEach(cats => {
+            cats.forEach(cat => categories.add(cat));
+        });
+        return Array.from(categories).sort();
+    }
 
-		return colorSchemeIcon;
-	}
+    addCategoryToTheme(theme: string, category: string) {
+        if (!this.settings.themeCategories[theme]) {
+            this.settings.themeCategories[theme] = [];
+        }
+        if (!this.settings.themeCategories[theme].includes(category)) {
+            this.settings.themeCategories[theme].push(category);
+            this.saveSettings();
+        }
+    }
 
-	getColorSchemeIcon() {
-		return this.isDarkMode() ? this.sunIconSvg : this.moonIconSvg;
-	}
+    removeCategoryFromTheme(theme: string, category: string) {
+        if (this.settings.themeCategories[theme]) {
+            this.settings.themeCategories[theme] = this.settings.themeCategories[theme].filter(c => c !== category);
+            if (this.settings.themeCategories[theme].length === 0) {
+                delete this.settings.themeCategories[theme];
+            }
+            this.saveSettings();
+        }
+    }
+}
 
-	toggleColorScheme(): void {
-		let colorSchemeKey;
-		if (this.isDarkMode()) {
-			colorSchemeKey = this.LIGHT_MODE_THEME_KEY;
-			this.colorSchemeIcon.innerHTML = this.moonIconSvg;
-		} else {
-			colorSchemeKey = this.DARK_MODE_THEME_KEY;
-			this.colorSchemeIcon.innerHTML = this.sunIconSvg;
-		}
+class ThemeCategorizerSettingTab extends PluginSettingTab {
+    plugin: ThemeCategorizerPlugin;
 
-		//@ts-ignore
-		this.app.changeTheme(colorSchemeKey);
-	}
+    constructor(app: App, plugin: ThemeCategorizerPlugin) {
+        super(app, plugin);
+        this.plugin = plugin;
+    }
 
-	isDarkMode(): boolean {
-		//@ts-ignore
-		return this.app.vault.getConfig("theme") === this.DARK_MODE_THEME_KEY;
-	}
+    display(): void {
+        const { containerEl } = this;
+        containerEl.empty();
+        containerEl.createEl('h2', { text: 'Theme Categorizer Settings' });
+
+        const themes = this.plugin.getInstalledThemes();
+        if (themes.length === 0) {
+            containerEl.createEl('p', { text: 'No themes installed.' });
+            return;
+        }
+
+        themes.forEach(theme => {
+            new Setting(containerEl)
+                .setName(theme)
+                .setDesc(this.getCategoriesDesc(theme))
+                .addButton(button => button.setButtonText('Manage Categories').onClick(() => this.openCategoryManager(theme)));
+        });
+    }
+
+    getCategoriesDesc(theme: string): string {
+        const cats = this.plugin.settings.themeCategories[theme] || [];
+        return cats.length > 0 ? `Categories: ${cats.join(', ')}` : 'No categories';
+    }
+
+    openCategoryManager(theme: string) {
+        new CategoryManagerModal(this.app, this.plugin, theme).open();
+    }
+}
+
+class CategoryManagerModal extends Modal {
+    plugin: ThemeCategorizerPlugin;
+    theme: string;
+
+    constructor(app: App, plugin: ThemeCategorizerPlugin, theme: string) {
+        super(app);
+        this.plugin = plugin;
+        this.theme = theme;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl('h3', { text: `Manage categories for: ${this.theme}` });
+
+        const currentCats = this.plugin.settings.themeCategories[this.theme] || [];
+        const catContainer = contentEl.createDiv({ cls: 'category-list' });
+        this.renderCategories(catContainer, currentCats);
+
+        contentEl.createEl('h4', { text: 'Add Category' });
+        const inputContainer = contentEl.createDiv();
+        const input = new TextComponent(inputContainer);
+        input.setPlaceholder('Category name');
+        
+        const addButton = inputContainer.createEl('button', { text: 'Add' });
+        addButton.onclick = () => {
+            const category = input.getValue().trim();
+            if (category) {
+                this.plugin.addCategoryToTheme(this.theme, category);
+                input.setValue('');
+                this.renderCategories(catContainer, this.plugin.settings.themeCategories[this.theme] || []);
+            }
+        };
+    }
+
+    renderCategories(container: HTMLElement, categories: string[]) {
+        container.empty();
+        if (categories.length === 0) {
+            container.createEl('p', { text: 'No categories assigned', cls: 'muted' });
+            return;
+        }
+
+        categories.forEach(cat => {
+            const catEl = container.createDiv({ cls: 'category-item' });
+            catEl.createSpan({ text: cat });
+            const removeBtn = catEl.createEl('button', { text: '×', cls: 'category-remove' });
+            removeBtn.onclick = () => {
+                this.plugin.removeCategoryFromTheme(this.theme, cat);
+                this.renderCategories(container, this.plugin.settings.themeCategories[this.theme] || []);
+            };
+        });
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
 }
