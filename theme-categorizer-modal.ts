@@ -134,29 +134,54 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         return item;
     }
 
-    // Override renderSuggestion to add right-click handler
+    // Override renderSuggestion to add category management button
     renderSuggestion(match: FuzzyMatch<string>, el: HTMLElement) {
-        // Default rendering - show theme name with categories
-        el.createDiv({ text: this.getItemText(match.item) });
+        // Skip menu button for "None" default theme
+        if (match.item === this.DEFAULT_THEME_KEY) {
+            el.createDiv({ text: this.getItemText(match.item) });
+            return;
+        }
+
+        // Create container with flexbox layout
+        const container = el.createDiv({ cls: 'theme-item-container' });
+        container.style.display = 'flex';
+        container.style.justifyContent = 'space-between';
+        container.style.alignItems = 'center';
+        container.style.width = '100%';
         
-        // Add right-click context menu handler with capture phase
-        el.addEventListener('contextmenu', (event: MouseEvent) => {
+        // Theme name with categories
+        const nameEl = container.createDiv({ 
+            text: this.getItemText(match.item),
+            cls: 'theme-item-name'
+        });
+        nameEl.style.flex = '1';
+        
+        // Category menu button (three dots)
+        const menuBtn = container.createEl('span', { 
+            text: '⋮',
+            cls: 'theme-category-btn'
+        });
+        menuBtn.style.cursor = 'pointer';
+        menuBtn.style.padding = '0 8px';
+        menuBtn.style.fontSize = '18px';
+        menuBtn.style.opacity = '0.5';
+        menuBtn.title = 'Manage categories';
+        
+        // Hover effect
+        menuBtn.addEventListener('mouseenter', () => {
+            menuBtn.style.opacity = '1';
+        });
+        menuBtn.addEventListener('mouseleave', () => {
+            menuBtn.style.opacity = '0.5';
+        });
+        
+        // Click handler for menu button
+        menuBtn.addEventListener('click', (event: MouseEvent) => {
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
             this.showContextMenu(event, match.item);
-            return false;
-        }, true);
-        
-        // Also prevent mousedown on right-click from triggering selection
-        el.addEventListener('mousedown', (event: MouseEvent) => {
-            if (event.button === 2) { // Right mouse button
-                event.preventDefault();
-                event.stopPropagation();
-                event.stopImmediatePropagation();
-                return false;
-            }
-        }, true);
+        });
     }
 
     showContextMenu(event: MouseEvent, themeName: string) {
@@ -268,20 +293,7 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         this.updateSuggestions();
     }
 
-    onChooseSuggestion(item: FuzzyMatch<string>, evt: MouseEvent | KeyboardEvent): void {
-        // Ignore right-clicks - those are for context menu
-        if (evt instanceof MouseEvent && evt.button === 2) {
-            return;
-        }
-        // Call parent implementation for left-click
-        super.onChooseSuggestion(item, evt);
-    }
-
     onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): void {
-        // Ignore right-clicks - those are for context menu
-        if (evt instanceof MouseEvent && evt.button === 2) {
-            return;
-        }
         this.previewing = false;
         this.setTheme(item);
     }
