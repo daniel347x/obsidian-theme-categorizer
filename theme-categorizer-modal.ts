@@ -268,7 +268,20 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         this.updateSuggestions();
     }
 
+    onChooseSuggestion(item: FuzzyMatch<string>, evt: MouseEvent | KeyboardEvent): void {
+        // Ignore right-clicks - those are for context menu
+        if (evt instanceof MouseEvent && evt.button === 2) {
+            return;
+        }
+        // Call parent implementation for left-click
+        super.onChooseSuggestion(item, evt);
+    }
+
     onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): void {
+        // Ignore right-clicks - those are for context menu
+        if (evt instanceof MouseEvent && evt.button === 2) {
+            return;
+        }
         this.previewing = false;
         this.setTheme(item);
     }
