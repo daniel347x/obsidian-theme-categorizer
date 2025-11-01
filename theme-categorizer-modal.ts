@@ -60,12 +60,13 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
     }
 
     onOpen() {
-        super.onOpen();
-        
-        // Restore last selected category from settings
+        // Restore last selected category from settings BEFORE calling super.onOpen()
+        // This ensures getItems() uses the correct filter when building initial list
         console.log('Theme Categorizer: onOpen() - lastSelectedCategory from settings:', this.settings.lastSelectedCategory);
         this.selectedCategory = this.settings.lastSelectedCategory;
         console.log('Theme Categorizer: onOpen() - selectedCategory set to:', this.selectedCategory);
+        
+        super.onOpen();
         
         // Add category filter UI at top of modal
         this.addCategoryFilter();
