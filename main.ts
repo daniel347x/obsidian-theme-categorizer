@@ -4,11 +4,13 @@ import ThemeCategorizerModal from './theme-categorizer-modal';
 interface ThemeCategorizerSettings {
     themeCategories: { [themeName: string]: string[] };
     categoryColors: { [categoryName: string]: string };
+    lastSelectedCategory: string | null;
 }
 
 const DEFAULT_SETTINGS: ThemeCategorizerSettings = {
     themeCategories: {},
-    categoryColors: {}
+    categoryColors: {},
+    lastSelectedCategory: null
 };
 
 export default class ThemeCategorizerPlugin extends Plugin {

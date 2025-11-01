@@ -3,6 +3,7 @@ import { App, FuzzySuggestModal, FuzzyMatch, Menu, Notice, KeymapEventListener }
 interface ThemeCategorizerSettings {
     themeCategories: { [themeName: string]: string[] };
     categoryColors: { [categoryName: string]: string };
+    lastSelectedCategory: string | null;
 }
 
 export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
@@ -61,6 +62,9 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
     onOpen() {
         super.onOpen();
         
+        // Restore last selected category from settings
+        this.selectedCategory = this.settings.lastSelectedCategory;
+        
         // Add category filter UI at top of modal
         this.addCategoryFilter();
         
@@ -99,8 +103,10 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
             cls: this.selectedCategory === null ? 'is-active' : ''
         });
         allBtn.style.marginRight = '4px';
-        allBtn.onclick = () => {
+        allBtn.onclick = async () => {
             this.selectedCategory = null;
+            this.settings.lastSelectedCategory = null;
+            await this.saveSettings();
             this.updateCategoryButtons();
             //@ts-ignore
             this.updateSuggestions();
@@ -114,8 +120,10 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
                 cls: this.selectedCategory === cat ? 'is-active' : ''
             });
             btn.style.marginRight = '4px';
-            btn.onclick = () => {
+            btn.onclick = async () => {
                 this.selectedCategory = cat;
+                this.settings.lastSelectedCategory = cat;
+                await this.saveSettings();
                 this.updateCategoryButtons();
                 //@ts-ignore
                 this.updateSuggestions();
