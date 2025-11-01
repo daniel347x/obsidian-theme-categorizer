@@ -63,7 +63,9 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         super.onOpen();
         
         // Restore last selected category from settings
+        console.log('Theme Categorizer: onOpen() - lastSelectedCategory from settings:', this.settings.lastSelectedCategory);
         this.selectedCategory = this.settings.lastSelectedCategory;
+        console.log('Theme Categorizer: onOpen() - selectedCategory set to:', this.selectedCategory);
         
         // Add category filter UI at top of modal
         this.addCategoryFilter();
@@ -104,9 +106,12 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
         });
         allBtn.style.marginRight = '4px';
         allBtn.onclick = async () => {
+            console.log('Theme Categorizer: All button clicked');
             this.selectedCategory = null;
             this.settings.lastSelectedCategory = null;
+            console.log('Theme Categorizer: Saving settings with lastSelectedCategory = null');
             await this.saveSettings();
+            console.log('Theme Categorizer: Settings saved');
             this.updateCategoryButtons();
             //@ts-ignore
             this.updateSuggestions();
@@ -121,9 +126,12 @@ export default class ThemeCategorizerModal extends FuzzySuggestModal<string> {
             });
             btn.style.marginRight = '4px';
             btn.onclick = async () => {
+                console.log('Theme Categorizer: Category button clicked:', cat);
                 this.selectedCategory = cat;
                 this.settings.lastSelectedCategory = cat;
+                console.log('Theme Categorizer: Saving settings with lastSelectedCategory =', cat);
                 await this.saveSettings();
+                console.log('Theme Categorizer: Settings saved');
                 this.updateCategoryButtons();
                 //@ts-ignore
                 this.updateSuggestions();
