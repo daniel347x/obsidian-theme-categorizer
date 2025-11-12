@@ -50,7 +50,7 @@ class ThemeCategorizerModal extends obsidian_1.FuzzySuggestModal {
     }
     onOpen() {
         var _a;
-        console.log('Theme Categorizer v1.3.2 (Updated Nov 12, 2025): Modal opened.');
+        console.log('Theme Categorizer v2.0.4 (BRAT Test Redeploy - Nov 13, 2025): Modal opened.');
         // Restore last selected category from settings BEFORE calling super.onOpen()
         // This ensures getItems() uses the correct filter when building initial list
         console.log('Theme Categorizer: onOpen() - lastSelectedCategory from settings:', this.settings.lastSelectedCategory);
